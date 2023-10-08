@@ -60,7 +60,7 @@ impl TryFrom<Vec<String>> for WcInput {
 
     fn try_from(args: Vec<String>) -> Result<Self, Self::Error> {
 
-        let mut option_flgs: [bool; 4] = [false, false, false, false];
+        let mut option_flags: [bool; 4] = [false, false, false, false];
         let mut files: Vec<String> = Vec::new();
 
         for raw_arg in args.iter() {
@@ -73,7 +73,7 @@ impl TryFrom<Vec<String>> for WcInput {
 
                 for c in chars {
                     let option = WcOptions::try_from(c)?;
-                    option_flgs[<WcOptions as Into<u8>>::into(option) as usize] = true;
+                    option_flags[<WcOptions as Into<u8>>::into(option) as usize] = true;
                 }
             } else {
                 files.push(arg.to_owned());
@@ -81,7 +81,7 @@ impl TryFrom<Vec<String>> for WcInput {
         }
 
         let mut options = Vec::new();
-        for (i, f) in option_flgs.iter().enumerate() {
+        for (i, f) in option_flags.iter().enumerate() {
             if *f {
                 options.push(WcOptions::try_from(i as u8)?);
             }
