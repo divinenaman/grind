@@ -7,11 +7,16 @@
   outputs = { self, flake-utils, nixpkgs, ... }:  
     flake-utils.lib.eachDefaultSystem(system: 
     let pkgs = nixpkgs.legacyPackages.${system};
+        rust = with pkgs; [ ructc cargo ];
+        c = with pkgs; [ gcc ]; 
     in
       {
-        devShell.wc = with pkgs; mkShell {
-            buildInputs = [ rustc cargo ];
+        devShells.rust = with pkgs; mkShell {
+            buildInputs = rust;
         };
+        devShells.c = with pkgs; mkShell {
+            buildInputs = c;
+        }; 
       }
     );
 }

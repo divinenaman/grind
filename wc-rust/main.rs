@@ -2,6 +2,10 @@ use std::env;
 use std::convert::TryFrom;
 use std::error::Error;
 
+use std::io::Read;
+use std::io::BufReader;
+use std::fs::File;
+
 #[derive(Debug)]
 enum WcOptions {
     BYTECOUNT,
@@ -97,6 +101,17 @@ impl TryFrom<Vec<String>> for WcInput {
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args: Vec<String> = env::args().collect();
 
+    let f = File::open("test.txt")?;
+    let mut reader = BufReader::new(f);
+    let mut buffer = Vec::new();
+
+
+    reader.read_to_end(&mut buffer)?;
+
+    for v in buffer {
+        println!("BYTE: {}", v as char);
+    }
+
     if args.len() == 1 {
         // read from stdin & output all options
         todo!();
@@ -107,8 +122,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let wc_input = WcInput::try_from(args)?;
 
-    println!("{:?}", wc_input.files);
-    println!("{:?}", wc_input.options);
+    println!("file: {:?}", wc_input.files);
+    println!("options: {:?}", wc_input.options);
 
     Ok(())
 }
