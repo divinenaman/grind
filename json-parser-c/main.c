@@ -2,7 +2,7 @@
 #include<stdlib.h>
 
 int main() {
-  char json[] = "{\"a\":\"\",}";
+  char json[] = "{\"a\": 9,}";
 
   int len = 0, i = 0;
 
@@ -18,6 +18,7 @@ int main() {
   int error = 0;
   int is_frist_curl = 1;
 
+  int decimal_point_found = 0;
   char *enclosing_block = malloc((len / 2) * sizeof(char));
 
   while (s <= e) {
@@ -67,12 +68,27 @@ int main() {
       }
 
       else if (*enclosing_block == ':') {
+        printf("here: %c", ch1);
+
         if (ch1 == ',') {
           enclosing_block--;
           s++;
+          decimal_point_found = 0;
         }
         else if (ch1 == '{' || ch1 == '[' || ch1 == '"') {
           *(++enclosing_block) = ch1;
+        } else if (ch1 == '.') {
+          if (decimal_point_found) {
+            error = 1;
+            break;
+          }
+          else if (*(json + s - 1) >= '0' && *(json + s - 1) <= '9') {
+            decimal_point_found = 1;
+          } else {
+            error = 1;
+            break;
+          }
+          
         } else if (ch1 < '0' || ch1 > '9') {
           error = 1;
           break;
@@ -86,11 +102,29 @@ int main() {
             error = 1;
             break;
           }
+          decimal_point_found = 0;
           s++;
+        } else if (ch1 == ',') {
+          if (*(json + s - 1) == '[') {
+            error = 1;
+            break;
+          } else {
+            decimal_point_found = 0;
+          }
         } else if (ch1 == '"') {
           // only string array support
           *(++enclosing_block) = ch1;
-        } else {
+        } else if (ch1 == '.') {
+          if (decimal_point_found) {
+            error = 1;
+            break;
+          } else if (*(json + s - 1) >= '0' && *(json + s - 1) <= '9') {
+            decimal_point_found = 1;
+          } else {
+            error = 1;
+            break;
+          }
+        } else if (ch1 < '0' || ch1 > '9') {
           error = 1;
           break;
         }
