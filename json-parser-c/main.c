@@ -2,7 +2,9 @@
 #include<stdlib.h>
 
 int main() {
-  char json[] = "{\"a\": 9,}";
+  int DEBUG = 1;
+
+  char json[] = "{\"a\":[9.0]}";
 
   int len = 0, i = 0;
 
@@ -11,7 +13,7 @@ int main() {
     i++;
   }
 
-  printf("len: %d\n", len);
+  printf("len: %d\n\n", len);
 
   int s = 0, e = len - 1;
   
@@ -21,9 +23,17 @@ int main() {
   int decimal_point_found = 0;
   char *enclosing_block = malloc((len / 2) * sizeof(char));
 
+  *enclosing_block = '\0';
+
   while (s <= e) {
     if (s > e) break;
     char ch1 = *(json + s);
+
+
+    if (DEBUG) {
+      printf("ch: %c\nenclosing-block: %c\nch-next: %c\n\n", ch1, *enclosing_block, *(json + s + 1));
+    }
+
     if (is_frist_curl) {
       char ch2 = *(json + e);
       if (ch1 != '{' || ch2 != '}') {
@@ -68,12 +78,13 @@ int main() {
       }
 
       else if (*enclosing_block == ':') {
-        printf("here: %c", ch1);
-
         if (ch1 == ',') {
           enclosing_block--;
           s++;
           decimal_point_found = 0;
+        } else if (ch1 == '}' && *(enclosing_block - 1) == '{') {
+          enclosing_block--;
+          s--;
         }
         else if (ch1 == '{' || ch1 == '[' || ch1 == '"') {
           *(++enclosing_block) = ch1;
@@ -98,12 +109,12 @@ int main() {
       else if (*enclosing_block == '[') {
         if (ch1 == ']') {
           enclosing_block--;
-          if (*(json + s + 1) != ',') {
-            error = 1;
-            break;
-          }
+          // if (*(json + s + 1) != ',') {
+          //   error = 1;
+          //   break;
+          // }
           decimal_point_found = 0;
-          s++;
+          // s++;
         } else if (ch1 == ',') {
           if (*(json + s - 1) == '[') {
             error = 1;
