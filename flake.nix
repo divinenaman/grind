@@ -17,6 +17,9 @@
         devShells.c = with pkgs; mkShell {
             buildInputs = c;
         }; 
+        devShells.node = with pkgs; mkShell {
+            buildInputs = [ nodejs_18 ];
+        };
       }
     );
 }
