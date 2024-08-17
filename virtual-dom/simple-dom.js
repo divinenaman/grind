@@ -4,13 +4,6 @@ const text = (t) => ({ type: "text", props: { text: t }, children: [] });
 const col = (props, children) => ({ type: "column", props, children });
 const row = (props, children) => ({ type: "row", props, children });
 
-// Created View
-const texts1 = [ text("Hi!"), text("How are you?") ];
-const view1 = col({ width: "100" }, texts1);
-
-const texts2 = [ text("Hello!"), text("How are you?"), text("How's the weather ?") ];
-const view2 = col({ width: "100", height: "120" }, texts2);
-
 // Diff
 const diffNode = (oldNode, newNode) => {
 	
@@ -59,9 +52,6 @@ const diffChildren = (oldChildren, newChildren) => {
 	return { removeChildren, addChildren, updateChildren }	
 }
 
-const diff = diffNode(view1, view2);
-console.log(diff, diff.childrenDiff)
-
 // Render
 // side-effect function
 const diffAndRender = (parentNode, oldView, newView) => {
@@ -71,27 +61,27 @@ const diffAndRender = (parentNode, oldView, newView) => {
 
 const renderNode = (parentNode, posInParent, oldView, newView, diff) => {
 	if (diff?.replaceNode) {
-		removeNode(parentNode, posInParent, oldView.node);
+		removeNode(parentNode, posInParent, oldView);
 		addNode(parentNode, posInParent, newView);
 		return;
 	}
 
 	// remove props
-	if (diff.removedProps.length > 0) removeProps(oldView.node, diff.removedProps);
+	if (diff.removedProps.length > 0) removeProps(oldView, diff.removedProps);
 	// add props
-	if (diff.addProps.length > 0) addProps(oldView.node, diff.addProps, newView.props);
+	if (diff.addProps.length > 0) addProps(oldView, diff.addProps, newView.props);
 	
 	// storing node reference
 	newView.node = oldView.node;
 
-	renderChildren(newView.node, oldView.children, newView.children, diff.childrenDiff);
+	renderChildren(newView, oldView.children, newView.children, diff.childrenDiff);
 }
 
 const renderChildren = (parentView, oldChildren, newChildren, diff) => {
 	
 	if (diff.removeChildren.length > 0) {
 		diff.removeChildren.forEach(element => {
-			removeNode(parentView, element, oldChildren[element].node);
+			removeNode(parentView, element, oldChildren[element]);
 		});
 	}
 	
@@ -101,75 +91,105 @@ const renderChildren = (parentView, oldChildren, newChildren, diff) => {
 
 	if (diff.addChildren.length > 0) {
 		diff.addChildren.forEach(ele => {
-			const newNode = addNode(parentView, -1, newChildren[ele]);
-			newChildren[ele].node = newNode;
+			addNode(parentView, -1, newChildren[ele]);
 		});
 	}
 }
 
 var counter = 0;
 
-const createNode = (type) => {
-	console.log("creating node -> ", type);
-	counter += 1;
-	return { type, id: counter, children: [], props: {} }
-}
 
-const addNode = (parentNode, position, view) => {
-	const ref = createNode(view.type);
-	
-	addProps(ref, Object.keys(view.props), view.props);
+// platform specific APIs
+const platformAPI = {
+	createNode(type) {
+		console.log("platformAPI: creating node -> ", type);
+		counter += 1;
+		return { type, id: counter, children: [], props: {} }
+	},
+	removeNode(parentNode, pos, node) {
+		console.log("platformAPI: removing node -> ", node.id)
 
-	// append at last
-	if (position == -1) {
-		parentNode.children.push(ref);	
-	} else {
-		parentNode.children.splice(pos, 0, ref);
-	}
+		while (node.children.length > 0) {
+			this.removeNode(node, 0, node.children[0]);
+		}
+		parentNode.children.splice(pos, 1);
 
-	view.children.forEach(x => {
-		addNode(ref, -1, x);
-	})
-	view.node = ref;
-}
-
-const addProps = (ref, keys, props) => {
-	for (const k of keys) {
-		ref.props[k] = props[k];
-	}
-}
-
-const removeProps = (ref, props) => {
-	for (const p in props) {
-		delete ref.props[p];
+	},
+	addProps(node, keys, values) {
+		keys.forEach(k => {
+			node.props[k] = values[k]
+		});
+	},
+	removeProps(node, keys) {
+		keys.forEach(k => {
+			delete node.props[k]
+		});
+	},
+	addToParent(parentNode, childNode, pos = -1) {
+		if (pos == -1) {
+			parentNode.children.push(childNode)
+		} else {
+			parentNode.children.splice(pos, 0, childNode)
+		}
 	}	
 }
 
-const removeNode = (parentRef, pos, ref) => {
-	console.log("removing node -> ", ref);
+// functions updating both dsl & platform specific nodes
+const addNode = (parentView, position, view) => {
+	const ref = platformAPI.createNode(view.type);
+	view.node = ref;
+	addProps(view, Object.keys(view.props), view.props);
+	
+	if (parentView) platformAPI.addToParent(parentView.node, ref, position);
 
-	while (ref.children.length > 0) {
-		removeNode(ref, 0, ref.children[0]);
-	}
+	view.children.forEach(x => {
+		addNode(view, -1, x);
+	})
 
-	parentRef.children.splice(pos, 1);
+	return view
 }
 
-const parentNode = createNode("div");
-addNode(parentNode, -1, view1);
+const addProps = (view, keys, props) => {
+	platformAPI.addProps(view.node, keys, props)
+}
+
+const removeProps = (view, props) => {	
+	platformAPI.removeNode(view.node, props)
+}
+
+const removeNode = (parentView, pos, view) => {
+	platformAPI.removeNode(parentView.node, pos, view.node)
+}
+
+// Created View
+const texts1 = [ text("Hi!"), text("How are you?") ];
+const view1 = col({ width: "100" }, texts1);
+
+const texts2 = [ text("Hello!"), text("How are you?"), text("How's the weather ?") ];
+const view2 = col({ width: "100", height: "120" }, texts2);
+
+
+// diff test
+const diff = diffNode(view1, view2);
+console.log("\n##### Diff Test #####\n", diff, "\n##### End #####\n")
+
+
+// diff & render test
+const parentView = addNode(null, -1, view1);
 
 console.log("#####");
-console.log(parentNode);
-console.log(parentNode.children[0])
+console.log(parentView);
 console.log("#####");
 
 console.log("#####");
-diffAndRender(parentNode, view1, view2)
-console.log(parentNode.children[0]);
+// test add-child, update-child, add-prop
+diffAndRender(parentView, view1, view2)
+console.log(parentView.node.children[0]);
 console.log("#####");
 
 console.log("#####");
+// test replace view
 const view3 = row({ width: "100", height: "120" }, texts2);
-diffAndRender(parentNode, view2, view3);
-console.log(parentNode.children[0]);
+diffAndRender(parentView, view2, view3);
+console.log(parentView.node.children[0]);
 console.log("#####");
