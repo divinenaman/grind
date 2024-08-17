@@ -4,6 +4,8 @@ const text = (t) => ({ type: "text", props: { text: t }, children: [] });
 const col = (props, children) => ({ type: "column", props, children });
 const row = (props, children) => ({ type: "row", props, children });
 
+let platformAPI = {}
+
 // Diff
 const diffNode = (oldNode, newNode) => {
 	
@@ -56,7 +58,8 @@ const diffChildren = (oldChildren, newChildren) => {
 // side-effect function
 const diffAndRender = (parentNode, oldView, newView) => {
 	const diff = diffNode(oldView, newView);
-	renderNode(parentNode, -1, oldView, newView, diff);
+	renderNode(parentNode, 0, oldView, newView, diff);
+	parentNode.children[0] = newView;
 }
 
 const renderNode = (parentNode, posInParent, oldView, newView, diff) => {
@@ -96,44 +99,6 @@ const renderChildren = (parentView, oldChildren, newChildren, diff) => {
 	}
 }
 
-var counter = 0;
-
-
-// platform specific APIs
-const platformAPI = {
-	createNode(type) {
-		console.log("platformAPI: creating node -> ", type);
-		counter += 1;
-		return { type, id: counter, children: [], props: {} }
-	},
-	removeNode(parentNode, pos, node) {
-		console.log("platformAPI: removing node -> ", node.id)
-
-		while (node.children.length > 0) {
-			this.removeNode(node, 0, node.children[0]);
-		}
-		parentNode.children.splice(pos, 1);
-
-	},
-	addProps(node, keys, values) {
-		keys.forEach(k => {
-			node.props[k] = values[k]
-		});
-	},
-	removeProps(node, keys) {
-		keys.forEach(k => {
-			delete node.props[k]
-		});
-	},
-	addToParent(parentNode, childNode, pos = -1) {
-		if (pos == -1) {
-			parentNode.children.push(childNode)
-		} else {
-			parentNode.children.splice(pos, 0, childNode)
-		}
-	}	
-}
-
 // functions updating both dsl & platform specific nodes
 const addNode = (parentView, position, view) => {
 	const ref = platformAPI.createNode(view.type);
@@ -161,35 +126,25 @@ const removeNode = (parentView, pos, view) => {
 	platformAPI.removeNode(parentView.node, pos, view.node)
 }
 
-// Created View
-const texts1 = [ text("Hi!"), text("How are you?") ];
-const view1 = col({ width: "100" }, texts1);
 
-const texts2 = [ text("Hello!"), text("How are you?"), text("How's the weather ?") ];
-const view2 = col({ width: "100", height: "120" }, texts2);
+const registerPlatformAPI = (apis) => {
+	platformAPI = apis;
+}
 
+const renderView = (view) => {
+	// create a dummy view to add view sent
+	const rootView = col({}, [view]);
+	// create node
+	addNode(null, -1, rootView);
+	// attach to root, the root of platform
+	platformAPI.addToRoot(rootView.node);
+	// use rootView to update view using updateView
+	return rootView	
+}
 
-// diff test
-const diff = diffNode(view1, view2);
-console.log("\n##### Diff Test #####\n", diff, "\n##### End #####\n")
+const updateView = (rootView, updatedView) => {
+	// assuming rootView is rendered (has a single child)
+	diffAndRender(rootView, rootView.children[0], updatedView)	
+}
 
-
-// diff & render test
-const parentView = addNode(null, -1, view1);
-
-console.log("#####");
-console.log(parentView);
-console.log("#####");
-
-console.log("#####");
-// test add-child, update-child, add-prop
-diffAndRender(parentView, view1, view2)
-console.log(parentView.node.children[0]);
-console.log("#####");
-
-console.log("#####");
-// test replace view
-const view3 = row({ width: "100", height: "120" }, texts2);
-diffAndRender(parentView, view2, view3);
-console.log(parentView.node.children[0]);
-console.log("#####");
+export { registerPlatformAPI, col, row, text, renderView, updateView, diffAndRender, diffNode, addNode }
