@@ -5,8 +5,9 @@ use std::error::Error;
 use std::io::Read;
 use std::io::BufReader;
 use std::fs::File;
+use std::fs::read_to_string;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum WcOptions {
     BYTECOUNT,
     LINECOUNT,
@@ -98,6 +99,15 @@ impl TryFrom<Vec<String>> for WcInput {
     }
 }
 
+fn calculate(op: &WcOptions, text: &str) -> usize {
+    match *op {
+        WcOptions::BYTECOUNT => (*text.as_bytes()).len(),
+        WcOptions::WORDCOUNT => text.split(' ').count(),
+        WcOptions::LINECOUNT => text.split('\n').count(),
+        WcOptions::CHARACTERCOUNT => (*text.as_bytes()).len(),
+    }
+}
+
 fn main() -> Result<(), Box<dyn Error>> {
     let mut args: Vec<String> = env::args().collect();
 
@@ -107,10 +117,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 
     reader.read_to_end(&mut buffer)?;
+    
+    let text = read_to_string("test.txt")?;
 
-    for v in buffer {
-        println!("BYTE: {}", v as char);
-    }
+    //for v in buffer {
+    //    println!("BYTE: {}", v as char);
+    //}
 
     if args.len() == 1 {
         // read from stdin & output all options
@@ -121,6 +133,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     args.remove(0);
 
     let wc_input = WcInput::try_from(args)?;
+
+    
+    for op in wc_input.options.iter() {
+        let res = calculate(op, &text);
+        println!("{} : {}", <WcOptions as Into<u8>>::into(op.clone()), res);
+    }
 
     println!("file: {:?}", wc_input.files);
     println!("options: {:?}", wc_input.options);
